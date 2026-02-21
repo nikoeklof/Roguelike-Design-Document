@@ -1,5 +1,4 @@
-# Roguelike-Design-Document
-# Modular Top‑Down Action Game — Technical Design Document (Godot 4.x)
+# Clank Slayer (not final name, working title) Technical Design Document (Godot 4.x)
 
 ---
 
