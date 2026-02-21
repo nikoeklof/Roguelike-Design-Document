@@ -325,5 +325,342 @@ This architecture should support:
 * procedural weapons
 * procedural levels with set room layouts 
 * deterministic simulation
-
 without rewriting core systems.
+
+Below is the same addendum rewritten as **plain Markdown** so you can directly copy-paste into your repo without UI blocks or special formatting.
+
+It intentionally matches a GitHub-friendly style.
+
+---
+
+# Procedural Equipment & Attack System
+
+## Purpose
+
+Extend the modular entity architecture with a scalable item-generation system capable of supporting:
+
+* Shared player/enemy equipment
+* Droppable enemy weapons usable by player
+* Behaviour-changing upgrades
+* Large weapon counts without animation explosion
+* Minimal art production cost
+* Deterministic generation
+
+The system must produce hundreds of gameplay-distinct weapons while keeping implementation complexity linear.
+
+---
+
+## Core Philosophy
+
+### Items define combat — actors only execute
+
+The entity does not attack.
+The item performs the attack.
+
+Flow:
+
+State → Combat → Equipped Item → Attack Behaviour → Effects
+
+This extends the existing rule that animation never drives gameplay into:
+
+**Actors never define attacks**
+
+---
+
+## Separation of Responsibilities
+
+| Layer            | Responsibility            |
+| ---------------- | ------------------------- |
+| Actor            | Movement, facing, sockets |
+| Combat           | Requests attack           |
+| Item             | Selects behaviour         |
+| Attack Behaviour | Timing + hit logic        |
+| Projectile       | Motion & impact           |
+| Modifier         | Mutates behaviour         |
+
+This prevents combinatorial explosion:
+
+actors × weapons × upgrades
+becomes
+actors + weapons + upgrades
+
+---
+
+## Item Structure
+
+An item is composed of five independent parts:
+
+Item Instance
+
+* Base Archetype
+* Attack Behaviour
+* Projectile (optional)
+* Modifiers (0-N)
+* Visual Overrides
+
+Items are assembled at spawn time and remain immutable afterward (except durability/charges).
+
+---
+
+## Attack Behaviour Model
+
+Attacks are reusable behaviours parameterized by items.
+
+### Behaviour categories
+
+| Type         | Description       |
+| ------------ | ----------------- |
+| MELEE_ARC    | Sweeping hitbox   |
+| MELEE_THRUST | Forward stab      |
+| HITSCAN      | Instant ray       |
+| PROJECTILE   | Spawned object    |
+| CAST         | Delayed effect    |
+| BLOCK        | Defensive state   |
+| AURA         | Persistent effect |
+
+Weapons never implement logic — they select behaviours.
+
+---
+
+## Attack Timeline
+
+Every attack follows the same timeline:
+
+Windup → Active → Recovery → Cooldown
+
+The behaviour defines timings, not animation.
+
+Different weapons feel unique by changing:
+
+* Windup
+* Hitstop
+* Movement lock
+* Impulse
+* Screen shake
+
+Not by adding new animations.
+
+---
+
+## Projectile System
+
+Projectiles are standalone simulation objects.
+
+They contain:
+
+| Property  | Purpose            |
+| --------- | ------------------ |
+| Motion    | Velocity model     |
+| Collision | Hit rules          |
+| Lifetime  | Expiry             |
+| Impact    | Effects            |
+| Status    | Applied conditions |
+
+An attack only spawns them.
+
+This allows:
+
+same weapon + different projectile = new weapon
+
+---
+
+## Modifier System (Procedural Upgrades)
+
+Modifiers mutate the generated item.
+
+### Modifier types
+
+| Category    | Effect               |
+| ----------- | -------------------- |
+| Stat        | Numeric scaling      |
+| Behaviour   | Change attack params |
+| Conversion  | Swap projectile      |
+| Conditional | Add triggers         |
+| Visual      | Palette / glow       |
+
+Modifiers never contain gameplay loops — only parameter edits.
+
+---
+
+## Modifier Application Order
+
+Order is deterministic and required for reproducibility:
+
+1. Base stats
+2. Flat additions
+3. Multipliers
+4. Behaviour overrides
+5. Projectile overrides
+6. Visual overrides
+7. Naming
+
+This guarantees reproducible items from seeds.
+
+---
+
+## Naming Generation
+
+Names are assembled as:
+
+[prefix] [base name] [suffix]
+
+Example:
+Brutal Scrap Pistol of Splitting
+
+Modifiers may contribute:
+
+* Prefix
+* Suffix
+* Descriptor
+
+---
+
+## Visual System Integration
+
+Art pipeline rule:
+
+**Weapons animate — characters move**
+
+Characters provide:
+
+* Hand sockets
+* Facing direction
+
+Weapons provide:
+
+* Attack frames
+* Trails
+* Flash frames
+
+This guarantees:
+New weapon = zero character animation work
+
+---
+
+## Enemy Equipment Integration
+
+Enemies do not have special weapons.
+
+Enemy = Actor + AI + Equipment
+
+They spawn with rolled items from a loot pool.
+
+When killed:
+Drop item instance → player equips same object
+
+No conversion required.
+
+---
+
+## Loot Generation
+
+Roll process:
+
+1. Choose pool
+2. Choose archetype
+3. Roll rarity
+4. Roll modifier count
+5. Pick allowed modifiers
+6. Apply modifiers
+7. Bake seed
+
+Result: deterministic item instance
+
+---
+
+## Rarity Scaling
+
+Rarity controls modifier count, not stat multipliers.
+
+| Rarity    | Mods |
+| --------- | ---- |
+| Common    | 0–1  |
+| Rare      | 1–2  |
+| Epic      | 2–3  |
+| Legendary | 3–5  |
+
+Balance remains predictable.
+
+---
+
+## Balance Rule
+
+Stats scale slowly.
+Behaviour changes scale dramatically.
+
+Variety should come from mechanics, not numbers.
+
+---
+
+## Animation Policy
+
+Characters never have attack animations.
+
+Characters only animate:
+
+* Locomotion
+* Hitstun
+* Death
+
+Attacks are communicated via:
+
+* Weapon motion
+* Flashes
+* Audio
+* Particles
+* Timing pauses
+
+This keeps hundreds of weapons readable.
+
+---
+
+## Data-Driven Expansion
+
+Adding a new weapon requires:
+
+* 1 sprite
+* 1 JSON definition
+
+No new code.
+
+Adding a new mechanic requires:
+
+* 1 behaviour OR projectile
+
+Then hundreds of weapons can use it.
+
+---
+
+## Performance Considerations
+
+To maintain performance:
+
+* Projectiles must be pooled
+* Behaviours shared as resources
+* Modifiers applied only at spawn
+
+Runtime combat must not allocate memory.
+
+---
+
+## Long-Term Benefits
+
+This system enables:
+
+
+* Enemy weapon variety
+* Scalable content production
+* Future mod support
+
+Without rewriting core combat.
+
+---
+
+## Design Outcome
+
+Three independent axes of variety:
+
+Actors (AI behaviour)
+Items (attack behaviour)
+Modifiers (rule mutations)
+
