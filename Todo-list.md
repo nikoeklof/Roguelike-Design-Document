@@ -1,12 +1,7 @@
-Perfect — I’ve now read your design document and compared it against what you’ve implemented so far in the project you shared + the systems we built during this session.
-
-Below is a **real production-grade TODO list**, not just features — it’s organized by **architecture maturity order** so you won’t accidentally break your own rules.
-
-(Important: I’m aligning strictly to your architecture rules — entity orchestrator, items drive combat, deterministic systems, etc.) ([GitHub][1])
 
 ---
 
-# CURRENT STATE — What You Already Have (Verified)
+# CURRENT STATE — What We Already Have (Verified)
 
 ## Core Architecture
 
