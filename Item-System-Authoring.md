@@ -410,5 +410,3 @@ The system is designed around these principles:
 This allows the system to scale to **hundreds of attributes and many weapon types** without increasing code complexity.
 
 ---
-
-End of document.
