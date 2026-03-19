@@ -18,9 +18,13 @@
 
 ✔ Melee hitboxes
 ✔ Projectiles
-✔ Spell casting
 ✔ Shields applying stats
 ✔ Initial loadouts ([GitHub][1])
+✔ Buff/Debuff system with modifier dictionaries
+✔ Global spell cooldown management
+✔ Multi-attribute spells (BattleTranceBuff + StoneSkinBuff)
+✔ Real-time debug HUD with buff duration tracking
+🔄 In Progress: Debuff spell logic
 
 ## Procedural World (new work)
 
@@ -304,7 +308,7 @@ Unlocks + pools
 
 ---
 
-# Suggested Implementation Order (Very Important)
+# Suggested Implementation Order
 
 1. Room activation + locking
 2. Enemy spawn lifecycle
@@ -312,6 +316,7 @@ Unlocks + pools
 4. Large room footprints
 5. Attack timeline
 6. Stagger / interrupts
+7. AI Combat Behaviour
 7. Behaviour-based weapons
 8. Procedural modifiers
 9. Loot generation
