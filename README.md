@@ -1,4 +1,4 @@
-# Clank Slayer (not final name, working title) Technical Design Document (Godot 4.x)
+# ClankerPunk (Working title) Technical Design Document (Godot 4.x)
 
 ---
 
