@@ -6,162 +6,148 @@
 ## Core Architecture
 
 ✔ Modular entity component architecture
-✔ Movement owned only by Mover ([GitHub][1])
-✔ Combat executed by items ([GitHub][1])
-✔ Equipment slots validated ([GitHub][1])
-✔ Shared player/enemy systems ([GitHub][1])
+✔ Movement owned only by Mover
+✔ Combat executed by items
+✔ Equipment slots validated
+✔ Shared player/enemy systems
 ✔ Interaction system
-✔ Pickup swapping algorithm ([GitHub][1])
-✔ Momentum preserving attacks ([GitHub][1])
+✔ Pickup swapping algorithm
+✔ Momentum-preserving attacks
+
+## Capability System
+
+✔ CAN_MOVE, CAN_ATTACK, CAN_CAST, CAN_BLOCK, CAN_SWITCH
+✔ Multi-reason stacking block/unblock (block(cap, reason) / unblock(cap, reason))
+✔ States only lock capabilities, never control physics directly
 
 ## Combat Features
 
-✔ Melee hitboxes
-✔ Projectiles
+✔ Melee hitboxes (executor pipeline: windup → active → recovery)
+✔ Ranged projectiles (hitscan, beam, projectile modes)
 ✔ Shields applying stats
-✔ Initial loadouts ([GitHub][1])
-✔ Buff/Debuff system with modifier dictionaries
-✔ Global spell cooldown management
-✔ Multi-attribute spells (BattleTranceBuff + StoneSkinBuff)
-✔ Real-time debug HUD with buff duration tracking
-🔄 In Progress: Debuff spell logic
+✔ Initial loadouts via LoadoutAssigner (seeded, deterministic)
+✔ Buff spells: BattleTrance, StoneSkin, Haste, EnemySlowAura
+✔ Debuff spells: Frailty, Slow — projectile and AOE delivery modes
+✔ EntityVisualController shader params: debuff_intensity, poison_amount, freeze_amount, burn_amount, shield_amount, hurt_flash
+✔ SpellEffect base class with duration/potency scaling, timer helpers, visual setters
+✔ Spell cooldown per-item (not global), read via spell.get_cooldown_remaining()
+✔ Reflection attribute (reflected projectiles reset lifetime)
 
-## Procedural World (new work)
+## Item System
 
-✔ Deterministic seeded floors
-✔ Graph topology generation
-✔ Start + boss selection
-✔ Room database exit matching
-✔ Door collider opening
-✔ Player spawn placement
-✔ Random seed testing mode
+✔ ItemDef / ItemInstance / BaseItemType / ItemTypeRegistry
+✔ SpellItemDef with spell_type (BUFF/DEBUFF), core_effect, projectile config, AOE config
+✔ Attribute pool system (ItemAttributeBus, ItemAttribute subclasses)
+✔ Spell modifier attributes: SpellReducedCooldown, SpellExtendedDuration, SpellAmplifiedPotency
+✔ Attribute-based rarity (attribute count → rarity tier)
+✔ ItemSpawner — deterministic drops from run_seed + spawn_id + drop_index
+✔ ItemTooltipFormatter for expanded item details
 
-We now officially have:
+## Procedural World
 
-> A functioning gameplay sandbox engine
+✔ Deterministic seeded floor generation (FloorGenerator)
+✔ Graph topology (room graph, START + BOSS selection)
+✔ Room database with exit mask matching
+✔ Normal rooms (1×1, 800×800 world units) — 16 template variants
+✔ XL rooms (2×2, 1600×1600 world units) — 15 template variants
+✔ EnemySpawn markers in all 31 room templates (5 per normal, 9 per XL)
+✔ PickupSpawn markers in all room templates
+✔ Door colliders open/close per exit mask
+✔ Player spawn placement at START room
+
+## Room Encounter System
+
+✔ RoomController: IDLE → ACTIVE → CLEARED state machine
+✔ Room trigger area (Area2D) covering full room, detects player via "player" group
+✔ Seeded per-room combat probability (combat_chance + boss_combat_chance exports on FloorSpawner)
+✔ BoI-style entry: block player input → momentum carries player in → lock doors + spawn enemies → unblock
+✔ Enemy spawn from EnemySpawn_* markers using seeded RNG
+✔ Health.died tracking per enemy, _enemies_remaining counter
+✔ encounter_cleared signal — unlocks doors, frees detection area
+✔ Room presence tracker: FloorSpawner emits player_room_changed(coord) signal via per-room Area2D
+
+## Debug HUD
+
+✔ Tabbed sections: STATS, SHIELD, BUFFS, ENEMY AI, INV
+✔ Map panel separated to top-right corner
+✔ Minimap (CanvasLayer-based, draws from FloorPlan)
+✔ Player cell tracked via player_room_changed signal (not position math)
+✔ Inventory tab: EquipList + item detail panel (ItemTooltipFormatter)
+✔ HUD layout: 25% width × 50% height max, tab buttons, font size tuned
+
+## Display
+
+✔ Base resolution 1280×720
+✔ stretch/mode = canvas_items, aspect = expand
+✔ Fills window at any size; 1.5× on 1080p, 2× on 1440p, 3× on 4K
 
 ---
 
 # NEXT PHASE — Dungeon Gameplay Layer
 
-## Priority 1 — Room Activation System (Critical)
+## Priority 1 — Camera Room System
 
-### Needed
-
-* Room trigger area (enter detection)
-* Room state machine:
-
-  * UNVISITED
-  * ACTIVE
-  * CLEARED
-* Door lock during combat
-* Enemy spawn trigger
-* Clear detection
-
-### Why
-
-We currently generate a dungeon but it has no gameplay pacing.
-
-This implements:
-
-> exploration → encounter → reward loop
-
----
-
-## Priority 2 — Enemy Lifecycle
-
-Our architecture supports enemies, but dungeon needs orchestration.
-
-### Add
-
-* EnemySpawner component (room-owned)
-* Spawn tables per room depth
-* Room listens for enemy deaths
-* Combat clear signal
-
-### Required for
-
-Boss rooms, pacing, progression
-
----
-
-## Priority 3 — Navigation Between Rooms
+Currently camera follows player freely — no room framing.
 
 Add:
+* Camera snaps/lerps to current room bounds on room entry
+* Locks to room rect while encounter is ACTIVE
+* Smooth transition when moving between rooms
 
-* Door transition triggers
-* Camera room snapping
-* Player confinement while locked
-* Prevent backtracking exploit during combat
+Why:
+Room framing is a foundational feel improvement for dungeon pacing.
+
+---
+
+## Priority 2 — Navigation Between Rooms
+
+Currently doors open freely — no transition handling.
+
+Add:
+* Door transition trigger areas
+* Brief transition (fade or pan) when exiting room through door
+* Prevent re-entering a room mid-encounter through a different door
+
+---
+
+## Priority 3 — Room Type Behaviors
+
+Room kinds exist (START, NORMAL, BOSS) but only BOSS and START have non-combat behavior.
+
+Add metadata behavior per kind:
+* TREASURE — guaranteed item drop, no combat
+* SHOP — NPC interaction, buy with currency
+* EVENT — scripted one-off encounters
+
+Room generator already supports kind field — kinds now need behavior nodes.
 
 ---
 
 # CONTENT GENERATION PHASE
 
-## Large Room Footprints
+## Room Footprint Expansion
 
-Implement occupancy grid:
+Currently: 1×1 (normal) and 2×2 (XL).
 
-* 1×1 small
+Planned:
 * 2×1 wide
 * 1×2 tall
-* 2×2 XL
-* L shaped
+* L-shaped
 
-Spawner must reserve multiple cells before placement.
-
-This unlocks:
-
-> real combat arenas
-
----
-
-## Room Types (Logic, not art)
-
-Add metadata per room:
-
-* START (safe)
-* COMBAT
-* TREASURE
-* SHOP
-* BOSS
-* EVENT
-
-Room generator already supports kinds — now they gain behavior.
+FloorGenerator occupancy grid must reserve cells before placement. Requires new room template sets.
 
 ---
 
 # COMBAT DEPTH PHASE
 
-## Attack Timeline System
+## Attack Timeline Formalization
 
-We currently attack — but not with standardized phases.
+Executor pipeline exists (windup → active → recovery) but phases are implicit per executor.
 
-Implement:
-Windup → Active → Recovery → Cooldown ([GitHub][1])
-
-Needed for:
-
-* hitstop
-* interrupts
-* stagger
-* charged attacks
-
----
-
-## Capability Locks Integration
-
-States should only lock capabilities — not logic 
-
-Add:
-
-* CAN_ATTACK
-* CAN_MOVE
-* CAN_CAST
-* STAGGERED
-
-Then:
-Combat reads capabilities instead of states.
+Formalize:
+* Explicit timing config on ItemDef
+* Hitstop (freeze frames on hit)
+* Charged attack variant
 
 ---
 
@@ -171,58 +157,41 @@ Required for melee readability and difficulty scaling.
 
 ---
 
-## AI Combat Behaviour
+## AI Combat Behavior Expansion
 
-Currently we only have boilerplate Chase AI
+Current AI: alert → chase → basic attack.
 
-Add enemy behaviors:
-
-* maintain distance
-* dodge windows
-* attack timing
-* weapon awareness
+Add:
+* Maintain optimal distance (ranged enemies)
+* Dodge windows (reaction to player attack windup)
+* Attack timing variation
+* Multi-phase boss patterns
 
 ---
 
 # ITEM SYSTEM EXPANSION
 
+## Procedural Loot Generator
 
-## Attack Behaviour Objects
+Framework exists (BaseItemType, ItemTypeRegistry, ItemSpawner).
 
-Weapons must select behaviours, not contain logic ([GitHub][1])
+Missing:
+* Runtime loot roller from enemy death
+* Room-depth-scaled difficulty curve
+* Drop rate tables per enemy type
 
-Create reusable behaviours:
-
-* Arc
-* Thrust
-* Projectile
-* Hitscan
-* Aura
-* Cast
-
-This is REQUIRED before procedural weapons.
+Flow: Pool → Archetype → Rarity → Modifiers → Bake seed → Spawn pickup
 
 ---
 
-## Modifier System
+## Attribute Expansion
 
-Procedural mutation layer ([GitHub][1])
+Current attributes: SpellReducedCooldown, SpellExtendedDuration, SpellAmplifiedPotency, Reflection.
 
-Add:
-
-* Stat modifiers
-* Behaviour modifiers
-* Projectile converters
-* Conditional triggers
-
----
-
-## Loot Generator
-
-Seeded item rolling ([GitHub][1])
-
-Flow:
-Pool → Archetype → Rarity → Modifiers → Bake seed
+Planned:
+* Conditional triggers (on_hit, on_kill, on_low_health)
+* Projectile converters (change projectile type)
+* Melee-specific: lunge, bleed, AoE on kill
 
 ---
 
@@ -230,29 +199,28 @@ Pool → Archetype → Rarity → Modifiers → Bake seed
 
 ## Pickups Expansion
 
-Right now we only have equipment pickups.
+Currently only equipment pickups exist.
 
 Add:
-
-* health
-* mana
-* ammo
-* temporary buffs ([GitHub][1])
+* Health pickup
+* Temporary buff consumables (uses existing SpellEffect infrastructure)
 
 ---
 
-## Inventory UI
+## Inventory / Equipment UI
 
-From planned systems ([GitHub][1])
+Debug HUD has basic inventory view. Game-facing UI needed.
 
-Needed before:
-shops, builds, strategy
+Required before: shops, builds, strategy decisions.
 
 ---
 
 ## Shops / NPC
 
-Interaction system already supports it.
+Interaction system already supports it. Needs:
+* ShopNPC scene
+* Currency resource
+* Buy/preview flow
 
 ---
 
@@ -260,19 +228,17 @@ Interaction system already supports it.
 
 ## Hitstop & Screen Feedback
 
-Needed after attack timeline.
-
-## Camera Room Framing
-
-Locks camera per room (huge feel improvement)
-
-## Minimap (real UI)
-
-Replace debug draw with CanvasLayer map
+After attack timeline formalization.
+* Hit freeze frames
+* Screen shake on heavy hits
+* Camera impulse
 
 ## Audio & Telegraphing
 
-Required because animations don't communicate attacks ([GitHub][1])
+Required because animations don't communicate attacks.
+* Attack windup audio cue
+* Hit audio
+* Death audio
 
 ---
 
@@ -280,15 +246,11 @@ Required because animations don't communicate attacks ([GitHub][1])
 
 ## Object Pooling
 
-Projectiles must be pooled ([GitHub][1])
-
-## Behaviour Resources Shared
-
-No runtime allocations ([GitHub][1])
+Projectiles must be pooled (currently instantiated per shot).
 
 ## Deterministic Simulation Validation
 
-Multiplayer / replay future proofing
+Multiplayer / replay future-proofing.
 
 ---
 
@@ -296,36 +258,37 @@ Multiplayer / replay future proofing
 
 ## Boss Systems
 
-Pattern logic + multi-phase
+* Pattern logic per boss type
+* Multi-phase transitions
 
 ## Biomes
 
-Different room pools per floor
+* Different room template pools per floor depth
+* Visual + enemy variety per biome
 
 ## Meta Progression
 
-Unlocks + pools
+* Unlocks between runs
+* Persistent pool expansion
 
 ---
 
-# Suggested Implementation Order
+# Implementation Order (Updated)
 
-1. Room activation + locking
-2. Enemy spawn lifecycle
-3. Camera room system
-4. Large room footprints
-5. Attack timeline
-6. Stagger / interrupts
-7. AI Combat Behaviour
-7. Behaviour-based weapons
-8. Procedural modifiers
-9. Loot generation
-10. Inventory / UI
-11. Shops / NPC
-12. Bosses
-13. Meta progression
-
----
-
-
-[1]: https://github.com/nikoeklof/Roguelike-Design-Document/tree/main "GitHub - nikoeklof/Roguelike-Design-Document"
+1. ~~Room activation + locking~~ ✔ Done
+2. ~~Enemy spawn lifecycle~~ ✔ Done
+3. Camera room framing
+4. Navigation / door transitions
+5. Room type behaviors (TREASURE, SHOP, EVENT)
+6. Large room footprints (2×1, 1×2, L-shape)
+7. Attack timeline formalization + hitstop
+8. Stagger / interrupts
+9. AI combat behavior expansion
+10. Loot generator (enemy drops)
+11. Attribute expansion
+12. Pickups expansion
+13. Inventory / equipment UI
+14. Shops / NPC
+15. Boss systems
+16. Biomes
+17. Meta progression

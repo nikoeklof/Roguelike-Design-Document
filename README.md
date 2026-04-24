@@ -269,38 +269,75 @@ Movement permissions come from the item, not the state.
 
 ## Current Working Features
 
-* Equipment swapping
-* Shared player/enemy combat
-* Melee hitboxes
-* Projectile weapons
-* Spell casting
-* Shields applying stats
-* Momentum‑preserving attacks
-* Interaction system
-* Initial loadouts
+### Core
+* Equipment swapping (melee, ranged, spell, shield slots)
+* Shared player/enemy combat — no special-case player code
+* Capability system: CAN_MOVE, CAN_ATTACK, CAN_CAST with stacking block/unblock
+* Momentum-preserving attacks
+* Interaction system + pickup swapping
+
+### Combat
+* Melee hitboxes (executor pipeline: windup → active → recovery)
+* Ranged weapons — projectile, hitscan, beam modes
+* Buff spells: BattleTrance, StoneSkin, Haste, EnemySlowAura
+* Debuff spells: Frailty, Slow — projectile and AOE delivery
+* Entity visual shader: debuff/poison/freeze/burn/shield/hurt-flash per entity
+* Reflection attribute (reflected projectiles reset lifetime)
+
+### Item System
+* ItemDef / ItemInstance / BaseItemType / ItemTypeRegistry (full data layer)
+* Attribute pool system — modular behavior units, deterministic rolling
+* Spell modifier attributes: SpellReducedCooldown, SpellExtendedDuration, SpellAmplifiedPotency
+* Deterministic item drops via ItemSpawner (run_seed + spawn_id + drop_index)
+* Initial loadouts via LoadoutAssigner (seeded per entity)
+
+### World
+* Seeded procedural floor generation — graph topology, START + BOSS selection
+* 31 room templates: 16 normal (1×1) + 15 XL (2×2)
+* Door colliders open/close per exit mask
+* EnemySpawn + PickupSpawn markers in all room templates
+
+### Room Encounters
+* RoomController: IDLE → ACTIVE → CLEARED per room
+* Player entry detection (Area2D, full-room coverage)
+* BoI-style entry: block input → momentum carries in → lock doors + spawn → unblock
+* Per-room seeded combat probability (tunable on FloorSpawner)
+* Enemy death tracking + auto-clear on last enemy
+* Player room tracking via signal (FloorSpawner.player_room_changed)
+
+### UI / Debug
+* Tabbed debug HUD (STATS, SHIELD, BUFFS, ENEMY AI, INV)
+* Minimap in top-right (CanvasLayer, updates on room entry)
+* Inventory tab with item detail panel
 
 ---
 
 ## Planned Systems
 
-### Combat Expansion
+### World
+* Camera room framing (snap/lock to current room)
+* Door transition effects
+* Room type behaviors: TREASURE, SHOP, EVENT
+* Large room footprints: 2×1, 1×2, L-shaped
 
-* Attack variants (light/heavy/charged)
-* Combos
-* Stagger / interrupt
-* AI combat behavior
+### Combat Expansion
+* Attack timeline formalization (hitstop, charged attacks)
+* Stagger / interrupt system
+* AI combat behavior expansion (distance management, dodge windows, boss patterns)
+
+### Item & Loot
+* Enemy drop loot roller (depth-scaled)
+* Attribute expansion (conditional triggers, projectile converters)
+* Health + consumable pickups
 
 ### Player Systems
+* Game-facing inventory / equipment UI
+* Shops / NPC dialogue
 
-* UI prompts
-* Inventory UI
-* Equipment screen
-
-### World Systems
-
-* Doors
-* NPC dialogue
-* Item pickups expanded (health, ammo, mana etc.)
+### Content
+* Boss multi-phase systems
+* Biomes (room pool + enemy variety per floor depth)
+* Meta progression (unlocks between runs)
 
 ---
 
