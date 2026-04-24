@@ -248,10 +248,6 @@ Required because animations don't communicate attacks.
 
 Projectiles must be pooled (currently instantiated per shot).
 
-## Deterministic Simulation Validation
-
-Multiplayer / replay future-proofing.
-
 ---
 
 # FINAL CONTENT PHASE
