@@ -48,12 +48,22 @@
 ✔ Deterministic seeded floor generation (FloorGenerator)
 ✔ Graph topology (room graph, START + BOSS selection)
 ✔ Room database with exit mask matching
-✔ Normal rooms (1×1, 800×800 world units) — 16 template variants
-✔ XL rooms (2×2, 1600×1600 world units) — 15 template variants
-✔ EnemySpawn markers in all 31 room templates (5 per normal, 9 per XL)
-✔ PickupSpawn markers in all room templates
-✔ Door colliders open/close per exit mask
+✔ Normal rooms (1×1, 800×800 world units) — 16 variants
+✔ XL rooms (2×2, 1600×1600 world units) — 15 variants
+✔ Room chunks contain only structure (walls, exits) — no spawn markers
+✔ Door system: Door.tscn (64×16px, fits 16px grid) spawned dynamically per room; exit doors OPEN, wall doors CLOSED; correct orientation per cardinal direction
+✔ Combat lock: all doors close on encounter start; unlock restores initial_state (wall doors stay closed)
 ✔ Player spawn placement at START room
+
+## Layout System
+
+✔ RoomLayoutDatabase — kind-only selection (NORMAL/BOSS/START), no exit-mask matching
+✔ Layouts are content-only overlays: props, enemy spawns, item spawns
+✔ No-repeat selection: prefers unused layout variants per floor run
+✔ Fallback to template scene when no variants exist yet
+✔ Layout injection order guarantees layout TileMapLayers keep their authored tileset
+✔ EnemySpawner_* markers (Marker2D) in layouts drive encounter spawning
+✔ Layout dirs: Scenes/WorldGen/Layouts/Normal/ and Scenes/WorldGen/Layouts/XL/
 
 ## Room Encounter System
 
@@ -61,9 +71,9 @@
 ✔ Room trigger area (Area2D) covering full room, detects player via "player" group
 ✔ Seeded per-room combat probability (combat_chance + boss_combat_chance exports on FloorSpawner)
 ✔ BoI-style entry: block player input → momentum carries player in → lock doors + spawn enemies → unblock
-✔ Enemy spawn from EnemySpawn_* markers using seeded RNG
+✔ Enemy spawn from EnemySpawner_* markers in layout scenes using seeded RNG
 ✔ Health.died tracking per enemy, _enemies_remaining counter
-✔ encounter_cleared signal — unlocks doors, frees detection area
+✔ encounter_cleared signal — unlocks doors (exits reopen, wall doors stay closed), frees detection area
 ✔ Room presence tracker: FloorSpawner emits player_room_changed(coord) signal via per-room Area2D
 
 ## Debug HUD
@@ -85,7 +95,21 @@
 
 # NEXT PHASE — Dungeon Gameplay Layer
 
-## Priority 1 — Camera Room System
+## Priority 1 — Items (Next Session)
+
+Implement currency, health pickups, and stat-up / new effect items.
+
+Add:
+* Currency pickup (collectable, tracked on player)
+* Health pickup (instant heal on collect)
+* Stat-up items (permanent passive buff via Stats modifiers)
+* New effect items (new SpellEffect or ItemAttribute entries)
+
+Use existing: GroundItemPickup, ItemSpawner, ItemSpawnMarkers in layouts, SpellEffect infrastructure.
+
+---
+
+## Priority 2 — Camera Room System
 
 Currently camera follows player freely — no room framing.
 
@@ -99,7 +123,7 @@ Room framing is a foundational feel improvement for dungeon pacing.
 
 ---
 
-## Priority 2 — Navigation Between Rooms
+## Priority 3 — Navigation Between Rooms
 
 Currently doors open freely — no transition handling.
 
@@ -110,7 +134,7 @@ Add:
 
 ---
 
-## Priority 3 — Room Type Behaviors
+## Priority 4 — Room Type Behaviors
 
 Room kinds exist (START, NORMAL, BOSS) but only BOSS and START have non-combat behavior.
 
@@ -277,18 +301,20 @@ Multiplayer / replay future-proofing.
 
 1. ~~Room activation + locking~~ ✔ Done
 2. ~~Enemy spawn lifecycle~~ ✔ Done
-3. Camera room framing
-4. Navigation / door transitions
-5. Room type behaviors (TREASURE, SHOP, EVENT)
-6. Large room footprints (2×1, 1×2, L-shape)
-7. Attack timeline formalization + hitstop
-8. Stagger / interrupts
-9. AI combat behavior expansion
-10. Loot generator (enemy drops)
-11. Attribute expansion
-12. Pickups expansion
-13. Inventory / equipment UI
-14. Shops / NPC
-15. Boss systems
-16. Biomes
-17. Meta progression
+3. ~~Door system (64px, dynamic spawn, oriented, combat lock)~~ ✔ Done
+4. ~~Layout system (content overlays, no-repeat, kind-based selection)~~ ✔ Done
+5. **Items — currency, health pickups, stat-up / effect items** ← Next
+6. Camera room framing
+7. Navigation / door transitions
+8. Room type behaviors (TREASURE, SHOP, EVENT)
+9. Large room footprints (2×1, 1×2, L-shape)
+10. Attack timeline formalization + hitstop
+11. Stagger / interrupts
+12. AI combat behavior expansion
+13. Loot generator (enemy drops)
+14. Attribute expansion
+15. Inventory / equipment UI
+16. Shops / NPC
+17. Boss systems
+18. Biomes
+19. Meta progression
